@@ -1,8 +1,6 @@
-# msddm
+# multistage
 
-This repository contains code for the numerical computation of various performance metrics for a multistage drift diffusion model with time varying piecewise constant drift rate.  It is the result of a collaboration between Vaibhav Srivastava, Samuel Feng, and Amitai Shenhav.
-
-
+This repository contains code for the numerical computation of various first passage time statistics for a multistage Wiener diffusion model with time varying piecewise constant drift rate.  The acronym we use for the model and this code is MSDDM, which is an artifact from the early days of the project. It is the result of a collaboration between Vaibhav Srivastava, Samuel Feng, Jonathan D. Cohen, Naomi Leonard, and Amitai Shenhav.
 
 The remainder of this file highlights key functions associated with the MSDDM package, including core functions (multi_stage_ddm_metrics.m and multistage_ddm_fpt_dist.m) and wrapper functions (MSDDM_wrapper.m and call_MSDDM_wrapper.m)
 
