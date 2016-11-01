@@ -37,8 +37,8 @@ end
 
 
 % No of discretization points in output distribution
-
 N_out= 100;
+% N_out= 1000;
 
 % Support set for the density 
 
@@ -56,7 +56,8 @@ end
 
 % Terms in the series solution to the density
 
-N=-5:5;
+N=-50:50;
+% N=-25:25;
 
 
 % Lebegue measure for the discretized input density 

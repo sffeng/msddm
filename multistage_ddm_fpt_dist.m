@@ -152,19 +152,24 @@ function [cdf,cdf_p, cdf_m, t] = ddm_fpt(a,s,z,x0,x0dist,t_end)
 
 % Support set for the density 
 
-step_t=0.01;
+step_t=0.0005;
 
-t1= linspace(0.0001, 0.01,10);
+t1= linspace(0.0001, 0.001,10);
+% t1= linspace(0.0001, 0.001,5);
 
 step1=t1(2)-t1(1);
 
+%t2 =linspace(t1(end)+0.0001,t_end,1000);
+
 t2=t1(end)+step_t:step_t:t_end;
+
+%step_t=t2(2)-t2(1);
 
 t=[t1, t2];
 
 % Terms in the series solution to the density
 
-N=-5:5;
+N=-10:10;
 
 % Lebegue measure for the discretized input density
 

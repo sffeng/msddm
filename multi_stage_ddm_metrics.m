@@ -91,6 +91,8 @@ for stage=1:stages-1
     
     
     pnd=min(0.9999,pnd);
+    
+    pnd=max(pnd,1e-8);
 
 if isempty(stage)
 stage = 1;    

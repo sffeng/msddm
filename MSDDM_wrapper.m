@@ -1,6 +1,6 @@
 function [aRT, aER, aRT_plus, aRT_minus, aCDF_T, aCDF_Y, aCDF_Y_plus, aCDF_Y_minus, ...
     simMeanRT, simMeanER,simMeanRT_plus,simMeanRT_minus, simCDF_T, simCDF_Y, simCDF_Y_plus, simCDF_Y_minus] = ...
-    MSDDM_wrapper(a,s,varthresh,deadlines,thresh,x0,x0dist,runSimulations,doPlots)
+    MSDDM_wrapper(a,s,varthresh,deadlines,thresh,x0,x0dist,runSimulations,doPlots,simContinuous,contSim)
 % Input:
 % a = vector of drift rates at each stage
 % s = vector of diffusion rates at each stage
@@ -55,6 +55,15 @@ if ~(exist('runSimulations','var') && ~isempty(runSimulations))
     % Run MC simulations?
     runSimulations = 0;
 end
+
+
+if ~(exist('simContinuous','var') || isnan(simContinuous))
+    % Run MC simulations?
+    simContinuous = nan;
+    contSim = [];
+end
+
+
 % No of Monte Carlo runs
 % realizations=10000;
 realizations=1000;
@@ -108,6 +117,10 @@ for jj=1:length(thresh)
     RT=nan(1,realizations);
     ER=nan(1,realizations);
     
+    
+
+    
+    tic
     if runSimulations
 
         % Simulate the multistage DDM (could be done more efficiently!)
@@ -122,41 +135,60 @@ for jj=1:length(thresh)
                 
                 stage=find(deadlines<=t,1,'last');
                 try
-                    x(l+1)= x(l) +a(stage)*step + s(stage)*randn*sqrt(step);
+                    if isnan(simContinuous)
+                        % Stage-wise changes in drift, etc.
+                        x(l+1)= x(l) +a(stage)*step + s(stage)*randn*sqrt(step);
+                    else
+                        % Continuous changes in drift, etc.
+                        x(l+1)= x(l) +contSim.a(l)*step + contSim.s(l)*randn*sqrt(step);
+                    end
+                    
                 catch me
                    keyboard; 
                 end
                 t=t+step;
                 l=l+1;
                 
-                if (x(l)>=threshold(stage) || x(l)<=-threshold(stage))
-                    stop=1;
-                    RT(N)=t;
-                    ER(N)=(x(l)<=-threshold(stage));
+                if isnan(simContinuous)
+                    if (x(l)>=threshold(stage) || x(l)<=-threshold(stage))
+                        stop=1;
+                        RT(N)=t;
+                        ER(N)=(x(l)<=-threshold(stage));
+                    end
+                else
+                    if (x(l)>=contSim.z(l) || x(l)<=-contSim.z(l))
+                        stop=1;
+                        RT(N)=t;
+                        ER(N)=(x(l)<=-contSim.z(l));
+                    end
                 end
             end
         end
+        toc
         
         % Mean decision time and error rate from Monte Carlo simulation
         simMeanRT(jj)=mean(RT);
         simMeanER(jj)=mean(ER);
         
+        
         % Simulated CDF for all choices
-        [hFreq{jj},hTimes{jj}] = hist(RT,1000);
-        tfinal(jj)= hTimes{jj}(end);
-        simCDF_T{jj} = hTimes{jj};  simCDF_Y{jj} = cumsum(hFreq{jj})/realizations;
-
-        % Simulated mean DT and CDFs for pos/neg threshold crossings separately
-        simRTplus=RT(ER==0);
-        simRTminus=RT(ER==1);        
-        simMeanRT_plus(jj)=mean(simRTplus);
-        simMeanRT_minus(jj)=mean(simRTminus);
-        [hFreq_plus{jj},hTimes_plus{jj}] = hist(simRTplus,1000);
-        tfinal_plus(jj)= hTimes_plus{jj}(end);
-        simCDF_T_plus{jj} = hTimes_plus{jj};  simCDF_Y_plus{jj} = cumsum(hFreq_plus{jj})/realizations;
-        [hFreq_minus{jj},hTimes_minus{jj}] = hist(simRTminus,1000);
-        tfinal_minus(jj)= hTimes_minus{jj}(end);
-        simCDF_T_minus{jj} = hTimes_minus{jj};  simCDF_Y_minus{jj} = cumsum(hFreq_minus{jj})/realizations;        
+% %         [hFreq{jj},hTimes{jj}] = hist(RT,1000);
+% %         tfinal(jj)= hTimes{jj}(end);
+% %         simCDF_T{jj} = hTimes{jj};  simCDF_Y{jj} = cumsum(hFreq{jj})/realizations;
+% % 
+% %         % Simulated mean DT and CDFs for pos/neg threshold crossings separately
+% %         simRTplus=RT(ER==0);
+% %         simRTminus=RT(ER==1);        
+% %         simMeanRT_plus(jj)=mean(simRTplus);
+% %         simMeanRT_minus(jj)=mean(simRTminus);
+% % %         std(simRTplus)/mean(simRTplus)
+% %         
+% %         [hFreq_plus{jj},hTimes_plus{jj}] = hist(simRTplus,1000));
+% %         tfinal_plus(jj)= hTimes_plus{jj}(end);
+% %         simCDF_T_plus{jj} = hTimes_plus{jj};  simCDF_Y_plus{jj} = cumsum(hFreq_plus{jj})/realizations;
+% %         [hFreq_minus{jj},hTimes_minus{jj}] = hist(simRTminus,1000);
+% %         tfinal_minus(jj)= hTimes_minus{jj}(end);
+% %         simCDF_T_minus{jj} = hTimes_minus{jj};  simCDF_Y_minus{jj} = cumsum(hFreq_minus{jj})/realizations;        
     else   
         % Setting all of these to empty in case not running simulations
         simMeanRT(jj)=nan; simMeanER(jj)=nan;
@@ -166,12 +198,35 @@ for jj=1:length(thresh)
         simCDF_T_minus{jj} = [];  simCDF_Y_minus{jj} = [];
         tfinal(jj) = tfinal_fixed; tfinal_plus(jj) = tfinal_fixed; tfinal_minus(jj) = tfinal_fixed;
     end
-    
+        tic
     % Analytic decision time and error rate
     [aRT(jj) aER(jj) aRT_plus(jj) aRT_minus(jj)]= multi_stage_ddm_metrics(a ,s, deadlines, threshold, x0, x0dist);
-
+    
     % Analytic CDF (T = RT range, Y = cumul prob)
-    [aCDF_T{jj} aCDF_Y{jj} aCDF_Y_plus{jj} aCDF_Y_minus{jj}]=multistage_ddm_fpt_dist(a,s,threshold,x0,x0dist,deadlines,tfinal(jj));
+    [aCDF_T{jj} aCDF_Y{jj} aCDF_Y_plus{jj} aCDF_Y_minus{jj}]=multistage_ddm_fpt_dist(a,s,threshold,x0,x0dist,deadlines,max(RT)); %tfinal(jj));
+    toc
+
+    if runSimulations
+        % Simulated CDF for all choices
+        [hFreq{jj},hTimes{jj}] = hist(RT,length(aCDF_T{jj}));
+        tfinal(jj)= hTimes{jj}(end);
+        simCDF_T{jj} = hTimes{jj};  simCDF_Y{jj} = cumsum(hFreq{jj})/realizations;
+        
+        % Simulated mean DT and CDFs for pos/neg threshold crossings separately
+        simRTplus=RT(ER==0);
+        simRTminus=RT(ER==1);
+        simMeanRT_plus(jj)=mean(simRTplus);
+        simMeanRT_minus(jj)=mean(simRTminus);
+        %         std(simRTplus)/mean(simRTplus)
+        
+        [hFreq_plus{jj},hTimes_plus{jj}] = hist(simRTplus,length(aCDF_T{jj}));
+        tfinal_plus(jj)= hTimes_plus{jj}(end);
+        simCDF_T_plus{jj} = hTimes_plus{jj};  simCDF_Y_plus{jj} = cumsum(hFreq_plus{jj})/realizations;
+        [hFreq_minus{jj},hTimes_minus{jj}] = hist(simRTminus,length(aCDF_T{jj}));
+        tfinal_minus(jj)= hTimes_minus{jj}(end);
+        simCDF_T_minus{jj} = hTimes_minus{jj};  simCDF_Y_minus{jj} = cumsum(hFreq_minus{jj})/realizations;
+    end
+    
 end
 
 
